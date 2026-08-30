@@ -69,9 +69,9 @@ export const MaxContentWidth = 800;
 export const WideLayoutMinWidth = 768;
 
 /**
- * Satoshi — the app's single typeface (files in assets/fonts). One family
- * name resolves everywhere: RN + web (@font-face), and the RNAW widget,
- * which loads assets/fonts/<name>.otf by basename. Bold is a separate face.
+ * Satoshi — the app's single typeface (files in assets/fonts). One family name
+ * resolves on both surfaces: React Native, and web via @font-face. Bold is a
+ * separate face, not a weight.
  */
 export const FontFamily = 'Satoshi';
 export const FontFamilyBold = 'Satoshi_bold';

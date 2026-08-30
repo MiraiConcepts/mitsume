@@ -2,6 +2,14 @@
 
 > Status: Decided · Last updated: 2026-06-09
 
+> **Scope note (2026-08-29).** This document records how mitsume got here,
+> including the calendar that shipped alongside notes between July and August
+> 2026. That calendar is now
+> [hitome](https://github.com/MiraiConcepts/hitome), a separate app with its own
+> repo, package id, and origin. Calendar entries below — §5.9 and decisions #9
+> and #13 — are kept as history, not as a description of what mitsume ships.
+>
+
 ## 1. Overview
 
 A **personal, single-user note-taking application** that runs on **Android**

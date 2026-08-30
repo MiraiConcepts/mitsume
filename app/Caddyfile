@@ -1,6 +1,7 @@
 # In-container static server for the exported web app (expo-router output:static).
-# Reverse-proxying to Radicale is the HOST Caddy's job (see docs/Deploy.md) — this
-# container only serves files, so it stays credential-free and trivially cacheable.
+# Proxying /sync and /blobs/ to the notes backend is the HOST Caddy's job (see
+# docs/Deploy.md) — this container only serves files, so it stays credential-free
+# and trivially cacheable.
 :80 {
 	root * /srv
 	encode gzip

@@ -16,7 +16,7 @@ web container). Full deploy instructions + host-Caddyfile snippet:
   immutable Cache-Control on existing files only.
 
 Both run **authless behind the tailnet** (host Caddy is the boundary — same
-posture as `/dav/`; no credentials exist client-side or in these containers).
+posture: no credentials exist client-side or in these containers).
 Images `ghcr.io/miraiconcepts/mitsume-sync` + `mitsume-blobs` build on every `v*`
 tag (`.github/workflows/server-images.yml`); Watchtower redeploys.
 
