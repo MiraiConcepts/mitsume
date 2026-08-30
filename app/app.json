@@ -16,11 +16,7 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false,
-      "permissions": [
-        "android.permission.SCHEDULE_EXACT_ALARM",
-        "android.permission.USE_EXACT_ALARM"
-      ]
+      "predictiveBackGestureEnabled": false
     },
     "web": {
       "output": "static",
@@ -28,14 +24,6 @@
     },
     "plugins": [
       "expo-router",
-      "./plugins/with-widget-ripple",
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/images/android-icon-monochrome.png",
-          "color": "#FFBD4F"
-        }
-      ],
       [
         "expo-font",
         {
@@ -53,26 +41,6 @@
             "image": "./assets/images/android-icon-foreground.png",
             "imageWidth": 128
           }
-        }
-      ],
-      [
-        "react-native-android-widget",
-        {
-          "widgets": [
-            {
-              "name": "Agenda",
-              "label": "mitsume agenda",
-              "description": "Next 20 upcoming events",
-              "minWidth": "250dp",
-              "minHeight": "110dp",
-              "targetCellWidth": 4,
-              "targetCellHeight": 2,
-              "resizeMode": "horizontal|vertical",
-              "maxResizeWidth": "420dp",
-              "maxResizeHeight": "350dp",
-              "updatePeriodMillis": 1800000
-            }
-          ]
         }
       ]
     ],
