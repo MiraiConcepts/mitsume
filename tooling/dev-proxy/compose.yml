@@ -8,10 +8,6 @@ services:
     image: caddy:2-alpine
     ports:
       - '8880:8880'
-    environment:
-      # From tooling/dev-proxy/.env (gitignored; see .env.example).
-      RADICALE_ORIGIN: ${RADICALE_ORIGIN:?set RADICALE_ORIGIN in tooling/dev-proxy/.env}
-      RADICALE_BASIC_B64: ${RADICALE_BASIC_B64:?set RADICALE_BASIC_B64 in tooling/dev-proxy/.env}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
     extra_hosts:

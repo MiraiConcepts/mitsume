@@ -1,42 +1,26 @@
 # Dev-time same-origin proxy for WEB development (runs in Docker — nothing on the host).
 #
-# `expo start --web` serves on :8081, which is a different origin than Radicale —
-# the browser would block CalDAV requests (CORS). This proxy puts Metro and Radicale
-# behind ONE local origin, exactly like production:
+# `expo start --web` serves on :8081, a different origin than the notes backend,
+# so the browser would block its requests. This proxy puts Metro and both
+# services behind ONE local origin, exactly like production:
 #
 #   http://localhost:8880/        → Metro dev server on the host (incl. HMR websocket)
-#   http://localhost:8880/dav/*   → your Radicale (over Tailscale)
 #   http://localhost:8880/sync/*  → local mitsume-sync (notes doc sync, websocket)
 #   http://localhost:8880/blobs/* → local mitsume-blobs (pasted-image bytes)
 #
 # Usage:
-#   cp tooling/dev-proxy/.env.example tooling/dev-proxy/.env   # set RADICALE_ORIGIN
 #   docker compose -f tooling/dev-proxy/compose.yml up -d      # start
 #   docker compose -f tooling/dev-proxy/compose.yml down       # stop (removes container)
 #
-# app/.env for web dev:
-#   EXPO_PUBLIC_DAV_URL=http://localhost:8880/dav/
+# No .env needed: both services are authless and built locally from server/.
+# (The calendar's Radicale credentials used to live here; that moved to hitome.)
 #
-# (Native Android dev is never subject to CORS — point it straight at the
-# Tailscale URL and skip this proxy.)
+# app/.env needs nothing for web — /sync and /blobs/ resolve against the page origin.
 
 :8880 {
-	# Strip /dav before forwarding; X-Script-Name makes Radicale emit hrefs
-	# under /dav so CalDAV discovery resolves through this proxy.
-	handle_path /dav/* {
-		reverse_proxy {$RADICALE_ORIGIN} {
-			header_up X-Script-Name /dav
-			header_up Host {upstream_hostport}
-			# Server-side credential injection (base64 of user:app-password) —
-			# clients send no Authorization; this replaces whatever they send.
-			header_up Authorization "Basic {$RADICALE_BASIC_B64}"
-		}
-	}
-
-	# Notes backend, same-origin like production (see docs/Deploy.md §Notes
-	# backend): doc sync over websocket, image blobs by SHA-256. The ws client
-	# connects to bare /sync (no trailing slash), which handle_path /sync/*
-	# would NOT match — hence the explicit two-form matcher.
+	# Notes backend, same-origin like production (see docs/Deploy.md). The ws
+	# client connects to bare /sync (no trailing slash), which handle_path
+	# /sync/* would NOT match — hence the explicit two-form matcher.
 	@sync path /sync /sync/*
 	handle @sync {
 		uri strip_prefix /sync

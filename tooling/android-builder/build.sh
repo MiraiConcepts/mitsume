@@ -13,7 +13,7 @@ if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
   docker build --platform linux/amd64 -t "$IMAGE" tooling/android-builder
 fi
 
-[ -f "$ENV_FILE" ] || { echo "missing $ENV_FILE — copy .env.example and set EXPO_PUBLIC_DAV_URL"; exit 1; }
+[ -f "$ENV_FILE" ] || { echo "missing $ENV_FILE — copy .env.example and fill it in"; exit 1; }
 [ -f "$KEYS_DIR/release.keystore" ] || { echo "missing $KEYS_DIR/release.keystore — see docs/Release.md (one-time keygen)"; exit 1; }
 [ -f "$KEYS_DIR/keystore.properties" ] || { echo "missing $KEYS_DIR/keystore.properties"; exit 1; }
 

@@ -152,7 +152,7 @@ One JS/TS codebase across Android and web. **User-confirmed 2026-06-09.**
 
 ### 9.4 Sync server (self-hosted) — Hocuspocus (supersedes y-sweet · 2026-07-11)
 - **Hocuspocus v4** (`@hocuspocus/server`, MIT, Tiptap team) — Node container
-  built from `server/sync/` (`ghcr.io/carrein/mitsume-sync`), persisting
+  built from `server/sync/` (`ghcr.io/miraiconcepts/mitsume-sync`), persisting
   whole-document state to a SQLite file on a volume (node:sqlite, no native
   deps). Authless behind the tailnet, same-origin under the host Caddy at
   `/sync/*` (see docs/Deploy.md §Notes backend).
@@ -165,7 +165,7 @@ One JS/TS codebase across Android and web. **User-confirmed 2026-06-09.**
 - Attachments, images, audio, and sketch files are **never stored in the CRDT**.
 - Bytes are hashed (**SHA-256**) and stored as **flat hash-named files** served
   by a Caddy + webdav container built from `server/blobs/`
-  (`ghcr.io/carrein/mitsume-blobs`): `PUT/GET/HEAD/DELETE /blobs/<hash>`, no
+  (`ghcr.io/miraiconcepts/mitsume-blobs`): `PUT/GET/HEAD/DELETE /blobs/<hash>`, no
   credentials (tailnet + host Caddy = the boundary), immutable Cache-Control
   on existing files. Only the **hash + content-type + size** live in the Yjs doc.
 - Pasted canvas images store TWO blobs: the untouched original (future
@@ -227,8 +227,8 @@ One JS/TS codebase across Android and web. **User-confirmed 2026-06-09.**
 | 8 | Sketch format | **Vector (point/path JSON)**, optional raster thumb (§9.8) |
 | 9 | Calendar (CalDAV) auth · 2026-07-06 | **Server-side credential injection**: clients (web + Android) store no credentials; the host Caddy injects `Authorization` on `/dav/*` → Radicale. Tailnet reachability = access on that origin (accepted; single-user tailnet — consistent with §9.10 posture). Supersedes the §9.7 token model *for the calendar component only*. |
 | 10 | Notes V1 surface · 2026-07-11 | **Spatial canvas**: the notes pane is a CanvasBar (one icon per canvas) + an infinite pan/zoom 32px-grid canvas holding pasted images (Yjs item model: id/x/y/w/h/z + blob refs). The item model is view-agnostic — a future toggle will render the same items as **list notes** (the §9.3 Tiptap document editor remains the plan for text notes). Server = source of truth; client = y-indexeddb + IndexedDB blob cache with an offline upload queue. |
-| 11 | Sync server · 2026-07-11 | **Hocuspocus v4** replaces the defunct y-sweet (§9.4). Authless behind tailnet at `/sync/*`; SQLite persistence on a volume; images `ghcr.io/carrein/mitsume-sync` built on `v*` tags. |
-| 12 | Blob storage · 2026-07-11 | **Content-addressed blob directory** (Caddy + webdav, `ghcr.io/carrein/mitsume-blobs`) replaces archived MinIO (§9.5). Same-origin `/blobs/<sha256>`, no client credentials, originals + WebP display renditions, client-refcounted deletion. |
+| 11 | Sync server · 2026-07-11 | **Hocuspocus v4** replaces the defunct y-sweet (§9.4). Authless behind tailnet at `/sync/*`; SQLite persistence on a volume; images `ghcr.io/miraiconcepts/mitsume-sync` built on `v*` tags. |
+| 12 | Blob storage · 2026-07-11 | **Content-addressed blob directory** (Caddy + webdav, `ghcr.io/miraiconcepts/mitsume-blobs`) replaces archived MinIO (§9.5). Same-origin `/blobs/<sha256>`, no client credentials, originals + WebP display renditions, client-refcounted deletion. |
 | 13 | Event editor: recurrence, alarms, location · 2026-07-19 | **Recurrence**: preset RRULEs (daily/weekdays/weekly/monthly/yearly + forever/until/count); anything richer is read-only "Custom" and never rewritten (incl. RECURRENCE-ID overrides). **Alarms**: one DISPLAY VALARM per event; the app itself fires them — Android via expo-notifications with exact-alarm permissions (`USE_EXACT_ALARM`), reconciled against CalDAV on every open/foreground (14-day horizon, deterministic ids); web best-effort while a tab is open. Notification tap deep-links `?day=`. **Location**: Photon (photon.komoot.io) search-as-you-type — the app's first third-party call, silently degrading to plain text offline; only the chosen label is stored in `LOCATION`. Self-hosted Photon behind Caddy is the hardening path if fair-use ever bites. **Presentation**: shared form, width-based shells — bottom sheet (<768px, @gorhom/bottom-sheet 5.2.14 exact pin) vs centered dialog; native pickers per platform (@expo/ui Compose dialogs on Android, DOM date/time inputs on web); date-as-title in `BrandColor`. |
 
 | 14 | Midnight-spanning timed events · 2026-08-02 | **The sun means a whole day, nothing else.** A timed event crossing midnight keeps every day it touches (no cutoff — a 06:00 "day start" that collapsed small-hours ends onto the start day was tried in v0.5.2 and dropped in v0.5.3 as a magic constant that also hid in-progress events). Its final day leads with `→ HH:MM` (the end time) instead of the all-day sun; middle days it fully covers still get the sun, since it genuinely owns those. Day coverage is `eventLastMs` (utils/date) — end exclusive at exact midnight — shared by `eventDays` and the month-grid layout so the widget and grid can't drift. |

@@ -17,7 +17,7 @@ web container). Full deploy instructions + host-Caddyfile snippet:
 
 Both run **authless behind the tailnet** (host Caddy is the boundary — same
 posture as `/dav/`; no credentials exist client-side or in these containers).
-Images `ghcr.io/carrein/mitsume-sync` + `mitsume-blobs` build on every `v*`
+Images `ghcr.io/miraiconcepts/mitsume-sync` + `mitsume-blobs` build on every `v*`
 tag (`.github/workflows/server-images.yml`); Watchtower redeploys.
 
 Local dev runs the same containers via `tooling/dev-proxy/compose.yml`

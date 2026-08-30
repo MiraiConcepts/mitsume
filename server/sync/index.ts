@@ -6,7 +6,7 @@
  * whole-document state persisted into a single-table SQLite file via the
  * built-in node:sqlite (no native deps). Authless by design: the host Caddy
  * proxies /sync/* to this container and tailnet reachability is the auth
- * boundary, exactly like Radicale on /dav/* (see docs/Deploy.md). Stores are
+ * boundary (see docs/Deploy.md). Stores are
  * debounced (2s default) and flushed on SIGINT/SIGTERM by Hocuspocus itself.
  */
 import { Database } from '@hocuspocus/extension-database';

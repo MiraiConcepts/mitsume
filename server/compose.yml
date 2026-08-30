@@ -10,7 +10,7 @@
 services:
   mitsume-sync:
     container_name: mitsume-sync
-    image: ghcr.io/carrein/mitsume-sync:latest
+    image: ghcr.io/miraiconcepts/mitsume-sync:latest
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -37,7 +37,7 @@ services:
 
   mitsume-blobs:
     container_name: mitsume-blobs
-    image: ghcr.io/carrein/mitsume-blobs:latest
+    image: ghcr.io/miraiconcepts/mitsume-blobs:latest
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true

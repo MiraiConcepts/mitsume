@@ -39,5 +39,5 @@ jobs:
           context: server/${{ matrix.image }}
           push: true
           tags: |
-            ghcr.io/carrein/mitsume-${{ matrix.image }}:latest
-            ghcr.io/carrein/mitsume-${{ matrix.image }}:${{ github.ref_name }}
+            ghcr.io/miraiconcepts/mitsume-${{ matrix.image }}:latest
+            ghcr.io/miraiconcepts/mitsume-${{ matrix.image }}:${{ github.ref_name }}

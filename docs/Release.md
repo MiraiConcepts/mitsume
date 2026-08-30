@@ -6,7 +6,7 @@
 > in-app version badge, bottom-right). Android lands as a signed universal APK
 > on a GitHub Release, tracked by
 > [Obtainium](https://github.com/ImranR98/Obtainium); web lands as
-> `ghcr.io/carrein/mitsume:latest`, deployed by Watchtower.
+> `ghcr.io/miraiconcepts/mitsume:latest`, deployed by Watchtower.
 
 ## Architecture (locked 2026-07-06)
 
@@ -17,10 +17,11 @@
   the signing keystore never leaves the maintainer's machine.**
   (Memoka precedent signed in CI via `KEYSTORE_BASE64` secret; mitsume deliberately
   keeps key custody local.)
-- **Baked server URL** ("option 1"): the APK ships `EXPO_PUBLIC_DAV_URL` baked from
-  the repo Actions **variable** `MITSUME_DAV_URL` — a variable, not a secret: the
-  ts.net hostname is already public via Certificate Transparency, and the origin is
-  unreachable off-tailnet (server-verified; Funnel off). URL/port change ⇒ new release.
+- **No baked server URL.** Web derives `/sync` and `/blobs/` from the page origin;
+  an APK has none, so the Android canvas is **local-only** — it does not sync. Setting
+  `EXPO_PUBLIC_SYNC_URL`/`EXPO_PUBLIC_BLOBS_URL` in the APK workflow would change that,
+  and the ts.net hostname is public-by-decision if you do (already exposed via
+  Certificate Transparency, unreachable off-tailnet; Funnel off).
 - **Signing keystore**: `~/.mitsume-keys/` (`release.keystore` + `keystore.properties`),
   NEVER in git. ⚠️ **Back it up** — Android only installs updates signed by the same
   key; losing it means uninstall/reinstall + Obtainium re-add.
@@ -69,7 +70,7 @@ web-only cut.
 
 ## Phone setup (one-time)
 
-Install Obtainium (F-Droid) → **Add App** → source URL `https://github.com/carrein/mitsume`
+Install Obtainium (F-Droid) → **Add App** → source URL `https://github.com/MiraiConcepts/mitsume`
 → install. Updates arrive as notifications thereafter.
 
 ## Fallback: fully local Docker build (no GitHub)
@@ -81,8 +82,8 @@ known failure layers but not yet proven end-to-end — prefer the CI path.
 
 ## Notes
 
-- One-time repo setup already done: Actions variable `MITSUME_DAV_URL`; keystore
-  generated 2026-07-06.
+- One-time repo setup already done: keystore generated 2026-07-06. The
+  `MITSUME_DAV_URL` Actions variable belonged to the calendar and is now hitome's.
 - `dist-apk/`, `app/android/`, and the builder `.env` are gitignored/disposable.
 - Revisit triggers for the baked-URL decision: Funnel ever enabled, tailnet gains
   users, or URL churn (→ switch to first-run URL entry; design shelved in

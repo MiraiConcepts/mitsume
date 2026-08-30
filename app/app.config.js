@@ -32,7 +32,10 @@ module.exports = ({ config }) => ({
     ? {
         // Launcher app label comes from expo.name (@string/app_name).
         name: 'mitsume (dev)',
-        android: { ...config.android, package: 'com.carrein.mitsume.dev' },
+        android: {
+          ...config.android,
+          package: 'com.miraiconcepts.mitsume.dev',
+        },
         plugins: withDevWidgetLabel(config.plugins),
       }
     : {}),

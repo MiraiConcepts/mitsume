@@ -5,8 +5,10 @@ name: Android APK
 # LOCALLY via tooling/android-builder/sign-release.sh — the keystore never
 # leaves the maintainer's machine and this repo holds no secrets.
 #
-# The baked server URL comes from the repo Actions VARIABLE `MITSUME_DAV_URL`
-# (a variable, not a secret — the URL is public-by-decision; see docs/Release.md).
+# No server URL is baked. The web app derives /sync and /blobs/ from the page
+# origin, but an APK has no page origin — so the canvas is LOCAL-ONLY on Android
+# until EXPO_PUBLIC_SYNC_URL / EXPO_PUBLIC_BLOBS_URL are set here. See
+# docs/Deploy.md §Android APK and app/.env.example.
 
 on:
   workflow_dispatch:
@@ -46,8 +48,6 @@ jobs:
 
       - name: Build release APK (unsigned, universal)
         working-directory: app/android
-        env:
-          EXPO_PUBLIC_DAV_URL: ${{ vars.MITSUME_DAV_URL }}
         run: ./gradlew :app:assembleRelease
 
       - name: Zipalign + stage signing tool

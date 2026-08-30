@@ -1,12 +1,12 @@
 name: Web image
 
-# Build the static web app into ghcr.io/carrein/mitsume:latest on every release
+# Build the static web app into ghcr.io/miraiconcepts/mitsume:latest on every release
 # tag (v*) — the same trigger as the Android APK workflow, so web and Android
 # always ship the same versioned commit. Watchtower on the server polls GHCR
 # and redeploys automatically (see docs/Deploy.md, docs/Release.md).
 #
-# CREDENTIAL-FREE: no secrets are used or needed. CalDAV auth is injected
-# server-side by the host Caddy on /dav/* (see docs/Deploy.md).
+# CREDENTIAL-FREE: no secrets are used or needed. The notes backend is authless
+# behind the tailnet and same-origin (see docs/Deploy.md).
 
 on:
   push:
@@ -36,7 +36,5 @@ jobs:
           context: app
           push: true
           tags: |
-            ghcr.io/carrein/mitsume:latest
-            ghcr.io/carrein/mitsume:${{ github.ref_name }}
-          build-args: |
-            EXPO_PUBLIC_DAV_URL=/dav/
+            ghcr.io/miraiconcepts/mitsume:latest
+            ghcr.io/miraiconcepts/mitsume:${{ github.ref_name }}

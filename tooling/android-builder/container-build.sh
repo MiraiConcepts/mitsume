@@ -27,7 +27,7 @@ echo "==> install Maven Central mirror fallback (Sonatype 403s some networks)"
 mkdir -p ~/.gradle/init.d
 cp /work/tools/mirror.gradle ~/.gradle/init.d/mirror.gradle
 
-echo "==> gradle assembleRelease (universal APK; EXPO_PUBLIC_DAV_URL is baked here)"
+echo "==> gradle assembleRelease (universal APK)"
 cd android
 ./gradlew :app:assembleRelease --no-daemon -x lint
 
