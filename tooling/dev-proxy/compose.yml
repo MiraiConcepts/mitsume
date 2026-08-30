@@ -2,6 +2,11 @@
 # notes backend (sync + blobs, built from server/) so web dev exercises the
 # real sync/blob flow. Dev notes data lives in the named volumes below —
 # `docker compose down -v` wipes it.
+# `docker compose` derives its project name from this directory, which is called
+# dev-proxy in hitome too — without an explicit name, bringing one up destroys
+# the other's containers. Found the hard way, 2026-08-30.
+name: mitsume-dev-proxy
+
 services:
   dev-proxy:
     container_name: mitsume-dev-proxy

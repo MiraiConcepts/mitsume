@@ -1,5 +1,5 @@
-import { NotesScreen } from '@/components/notes/notes-screen';
+import { NotepadScreen } from '@/components/notes/notepad-screen';
 
 export default function HomeRoute() {
-  return <NotesScreen />;
+  return <NotepadScreen />;
 }
