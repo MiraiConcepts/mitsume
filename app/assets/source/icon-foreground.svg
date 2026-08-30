@@ -1,8 +1,0 @@
-<!-- Android adaptive-icon foreground: white "m" only, transparent, scaled into
-     the center safe zone. Pairs with backgroundColor #E66000 (the launcher
-     mask turns the orange background into the circle/squircle). -->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 22" width="1024" height="1024" role="img" aria-label="mitsume">
-  <g transform="translate(11 11) scale(1.35) translate(-11 -11)">
-    <path fill="#FFFFFF" d="M7 6v1H6v9h2V8h2v7h2V8h2v8h2V7h-1V6z"/>
-  </g>
-</svg>

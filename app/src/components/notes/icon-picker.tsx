@@ -14,9 +14,8 @@ const CELL_SIZE = 48;
 const ICON_SIZE = 24;
 
 /**
- * "New canvas" dialog (same modal-over-backdrop pattern as the calendar's
- * event editor): pick an icon from the curated Basil set and the canvas is
- * created immediately.
+ * "New canvas" dialog: pick an icon from the curated Basil set and the
+ * canvas is created immediately.
  */
 export function IconPicker({
   visible,
