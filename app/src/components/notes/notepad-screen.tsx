@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Platform, StyleSheet, TextInput } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -45,6 +46,10 @@ export function NotepadScreen() {
 
 function NotepadReady({ handle }: { handle: NotesHandle }) {
   const theme = useTheme();
+  // Pad the FIELD rather than inset the container, so the tap target still
+  // covers the whole screen while the text itself clears Android's status
+  // bar and gesture pill. Zero on web, where the page owns its own chrome.
+  const insets = useSafeAreaInsets();
   // Y.Text.toJSON() is the body as a string, and observeDeep fires for both
   // local keystrokes and remote updates — so the snapshot hook the canvas
   // uses works here unchanged.
@@ -63,7 +68,16 @@ function NotepadReady({ handle }: { handle: NotesHandle }) {
         // Web opens with the caret ready. On Android the same prop throws the
         // keyboard up over the note before you have asked for it.
         autoFocus={Platform.OS === 'web'}
-        style={[styles.input, { color: theme.text }]}
+        style={[
+          styles.input,
+          {
+            color: theme.text,
+            paddingTop: Spacing.four + insets.top,
+            paddingBottom: Spacing.four + insets.bottom,
+            paddingLeft: Spacing.four + insets.left,
+            paddingRight: Spacing.four + insets.right,
+          },
+        ]}
       />
     </ThemedView>
   );
@@ -88,7 +102,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    padding: Spacing.four,
+    // Padding is applied inline — it has to fold in the safe-area insets.
     fontFamily: Fonts.sans,
     fontSize: 16,
     lineHeight: 24,
