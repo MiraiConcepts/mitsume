@@ -20,8 +20,8 @@ export const Colors = {
   },
   dark: {
     text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
+    background: '#1C1B22',
+    backgroundElement: '#000000',
     backgroundSelected: '#2E3135',
     textSecondary: '#B0B4BA',
     link: '#5B9DFF',
@@ -70,4 +70,4 @@ export const Spacing = {
 export const AccentColor = '#FFBD4F';
 /** Text/icons on an accent-colored surface, in both schemes — dark ink, since
  * the Firefox orange is too light for white to stay readable on it. */
-export const OnAccentColor = '#1C1B22';
+export const OnAccentColor = '#000000';
