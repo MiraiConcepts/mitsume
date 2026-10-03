@@ -4,6 +4,13 @@ Personal, single-user, local-first notes app. Expo SDK 56 / RN 0.85 (+ RN Web)
 client; self-hosted backend (Hocuspocus for doc sync + a content-addressed blob
 store for pasted images). Targets web + Android (Obtainium) — no iOS.
 
+The unit of content is a **leaf**: one free-form notepad (left) beside one
+image canvas (right). The rail on the far left switches, adds (+, icon
+picker), reorders (mouse drag, web only) and deletes (right-click / Android
+long-press, confirmed, never the last one) leaves. In code the canvas half
+keeps `canvas` names; the doc's root map is still `'canvases'` for data
+compatibility.
+
 The calendar that used to live here is now
 [hitome](https://github.com/MiraiConcepts/hitome), with its own package id,
 image, and origin. Nothing here talks CalDAV.
@@ -62,7 +69,7 @@ helper scripts.
 
 ## Invariants
 
-- **The sync and blob volumes are the only copy of your notes.** The canvas is
+- **The sync and blob volumes are the only copy of your notes.** The app is
   local-first, so a device holds a replica, not the archive. Backups cover
   `MITSUME_SYNC_VOLUME` and `MITSUME_BLOBS_VOLUME`.
 - **Android does not sync.** No `EXPO_PUBLIC_SYNC_URL`/`_BLOBS_URL` is baked, so

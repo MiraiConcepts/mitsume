@@ -14,9 +14,9 @@ export type NotesHandle = {
   /**
    * Resolves on the FIRST server sync (immediately when no provider is
    * configured; never when the server is unreachable — race with a timeout).
-   * Seeding the default canvas must wait for this: seeding before the server
+   * Seeding the first leaf must wait for this: seeding before the server
    * doc arrives creates a rival 'default' Y.Map whose same-key CRDT merge can
-   * clobber the server's canvas — and its items — on a fresh cache.
+   * clobber the server's leaf — and its items — on a fresh cache.
    */
   synced: Promise<void>;
   /** Null when no sync URL is configured (e.g. native without EXPO_PUBLIC_SYNC_URL). */
@@ -26,13 +26,13 @@ export type NotesHandle = {
 let handle: NotesHandle | null = null;
 
 /**
- * Lazily opens the app-wide notes doc — one Y.Doc holding every canvas (V1),
+ * Lazily opens the app-wide notes doc — one Y.Doc holding every leaf (V1),
  * meshing y-indexeddb (local cache) with the Hocuspocus provider (server =
  * source of truth; offline edits merge on reconnect). Lazy because module
  * scope also runs during the static web export (Node), where neither
  * indexedDB nor window exist: call from client code (mount effect), never at
  * module scope. All doc access goes through the store so a future
- * doc-per-canvas split stays mechanical.
+ * doc-per-leaf split stays mechanical.
  */
 export function openNotes(): NotesHandle {
   if (handle) return handle;

@@ -3,9 +3,11 @@
 Personal, single-user, local-first note-taking app for Android and web, syncing
 to a self-hosted backend.
 
-An infinite canvas: drag, pinch, and paste images onto a dot grid, organised
-into named canvases. Edits merge without conflicts (Yjs CRDT) and survive
-offline; images are stored once by content hash.
+Notes live on **leaves**. A leaf is a free-form notepad on the left beside an
+infinite canvas on the right: drag, pinch, and paste images onto a dot grid.
+A rail of icons switches, adds, reorders, and deletes leaves. Edits merge
+without conflicts (Yjs CRDT) and survive offline; images are stored once by
+content hash.
 
 - **Client:** [`app/`](app/) — Expo / React Native (+ React Native Web), TypeScript
 - **Server:** [`server/`](server/) — Hocuspocus (Yjs doc sync, SQLite) + a

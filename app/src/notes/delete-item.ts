@@ -19,8 +19,26 @@ export async function deleteItemWithBlobs(
   const item = store.getItem(canvasId, itemId);
   if (!item) return;
   store.deleteItem(canvasId, itemId);
+  await dropUnreferencedBlobs(store, [item.displayHash, item.originalHash]);
+}
+
+/**
+ * Delete a whole leaf — notepad, canvas items and the bytes of every image
+ * no other leaf still uses. Same blob rules as a single item.
+ */
+export async function deleteLeafWithBlobs(
+  store: NotesStore,
+  leafId: string
+): Promise<void> {
+  await dropUnreferencedBlobs(store, store.deleteLeaf(leafId));
+}
+
+async function dropUnreferencedBlobs(
+  store: NotesStore,
+  hashes: Iterable<string>
+): Promise<void> {
   const base = blobsBaseUrl();
-  for (const hash of new Set([item.displayHash, item.originalHash])) {
+  for (const hash of new Set(hashes)) {
     if (store.referencesToHash(hash) > 0) continue;
     await removeBlob(hash);
     if (base)

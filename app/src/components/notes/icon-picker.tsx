@@ -1,21 +1,21 @@
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 
-import { CanvasIcon } from '@/components/icons';
+import { LeafIcon } from '@/components/icons';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { CanvasIconBodies } from '@/constants/icon-paths';
+import { LeafIconBodies } from '@/constants/icon-paths';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
-import type { CanvasIconName } from '@/constants/icon-paths';
+import type { LeafIconName } from '@/constants/icon-paths';
 
-const ICONS = Object.keys(CanvasIconBodies) as CanvasIconName[];
+const ICONS = Object.keys(LeafIconBodies) as LeafIconName[];
 const CELL_SIZE = 48;
 const ICON_SIZE = 24;
 
 /**
- * "New canvas" dialog: pick an icon from the curated Basil set and the
- * canvas is created immediately.
+ * "New leaf" dialog: pick an icon from the curated Basil set and the
+ * leaf is created immediately.
  */
 export function IconPicker({
   visible,
@@ -23,7 +23,7 @@ export function IconPicker({
   onClose,
 }: {
   visible: boolean;
-  onPick: (icon: CanvasIconName) => void;
+  onPick: (icon: LeafIconName) => void;
   onClose: () => void;
 }) {
   const theme = useTheme();
@@ -32,7 +32,7 @@ export function IconPicker({
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.backdrop}>
         <ThemedView type="backgroundElement" style={styles.card}>
-          <ThemedText type="smallBold">New canvas</ThemedText>
+          <ThemedText type="smallBold">New leaf</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
             Pick an icon for it.
           </ThemedText>
@@ -46,7 +46,7 @@ export function IconPicker({
                 <View
                   style={[styles.cell, { borderColor: theme.textSecondary }]}
                 >
-                  <CanvasIcon
+                  <LeafIcon
                     name={name}
                     size={ICON_SIZE}
                     color={theme.textSecondary}

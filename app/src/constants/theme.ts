@@ -71,3 +71,5 @@ export const AccentColor = '#FFBD4F';
 /** Text/icons on an accent-colored surface, in both schemes — dark ink, since
  * the Firefox orange is too light for white to stay readable on it. */
 export const OnAccentColor = '#000000';
+/** Destructive actions (Delete). The palette's red, as in hitome. */
+export const DangerColor = '#FF505F';

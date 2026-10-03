@@ -3,9 +3,9 @@
 // lucide API (`size`, `color`) to keep call sites simple.
 import { SvgXml } from 'react-native-svg';
 
-import { AddOutlineBody, CanvasIconBodies } from '@/constants/icon-paths';
+import { AddOutlineBody, LeafIconBodies } from '@/constants/icon-paths';
 
-import type { CanvasIconName } from '@/constants/icon-paths';
+import type { LeafIconName } from '@/constants/icon-paths';
 
 type IconProps = { size?: number; color: string };
 
@@ -20,15 +20,14 @@ export function AddIcon({ size = 24, color }: IconProps) {
 }
 
 /**
- * A canvas's CanvasBar icon by stored name. Unknown names (e.g. from a newer
- * doc) fall back to the default canvas icon rather than crashing.
+ * A leaf's rail icon by stored name. Unknown names (e.g. from a newer
+ * doc) fall back to the first leaf's icon rather than crashing.
  */
-export function CanvasIcon({
+export function LeafIcon({
   name,
   size = 24,
   color,
 }: IconProps & { name: string }) {
-  const body =
-    CanvasIconBodies[name as CanvasIconName] ?? CanvasIconBodies.book;
+  const body = LeafIconBodies[name as LeafIconName] ?? LeafIconBodies.book;
   return <SvgXml xml={svg(body, size, color)} />;
 }

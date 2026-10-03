@@ -1,14 +1,17 @@
 /** Plain-JSON shapes of the Yjs notes doc (what toJSON() yields). */
 
-export type CanvasMeta = {
+/** A leaf (one notepad + one canvas) as the rail lists it. */
+export type LeafMeta = {
   id: string;
-  /** Basil icon name shown in the CanvasBar (see constants/icon-paths). */
+  /** Basil icon name shown in the LeafBar (see constants/icon-paths). */
   icon: string;
   createdAt: number;
+  /** Rail position: the stored order, or createdAt for a leaf never moved. */
+  order: number;
 };
 
 /**
- * One image placed on a canvas. x/y/w/h are world coordinates (grid-snapped);
+ * One image placed on a leaf's canvas. x/y/w/h are world coordinates (grid-snapped);
  * z stacks newest-on-top. Bytes live in the blob store keyed by SHA-256 —
  * the doc only ever references hashes (originals are kept server-side for
  * future view/export; the canvas renders the display rendition).
