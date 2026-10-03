@@ -15,6 +15,13 @@ const isEditable = (target: EventTarget | null): boolean => {
 };
 
 /**
+ * Which pastes a listener takes: 'page' = anywhere EXCEPT a text field (the
+ * canvas), 'text' = only inside one (the notes, pasting after the chunk you
+ * are typing in). Two listeners, never both for one paste.
+ */
+export type PasteScope = 'page' | 'text';
+
+/**
  * Document-level paste listener: image files run through the ingest pipeline
  * (hash + display rendition + upload queue) and reach the callback one by
  * one; anything else is silently ignored (user decision). `clipboardData.
@@ -22,11 +29,12 @@ const isEditable = (target: EventTarget | null): boolean => {
  * events need no clipboard permission — the keystroke IS the user grant.
  */
 export function usePasteImages(
-  onIngested: (image: IngestedImage, index: number) => void
+  onIngested: (image: IngestedImage, index: number) => void,
+  scope: PasteScope = 'page'
 ): void {
   useEffect(() => {
     const onPaste = (e: ClipboardEvent) => {
-      if (isEditable(e.target)) return; // typing in an input — not ours
+      if (isEditable(e.target) !== (scope === 'text')) return;
       const files = [...(e.clipboardData?.files ?? [])].filter((f) =>
         f.type.startsWith('image/')
       );
@@ -46,5 +54,5 @@ export function usePasteImages(
     };
     document.addEventListener('paste', onPaste);
     return () => document.removeEventListener('paste', onPaste);
-  }, [onIngested]);
+  }, [onIngested, scope]);
 }

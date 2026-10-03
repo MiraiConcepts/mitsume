@@ -50,6 +50,7 @@ export function NotesScreen() {
       // Only AFTER the server had its chance to deliver existing state —
       // seeding earlier would rival the server's 'default' leaf (see doc.ts).
       h.store.ensureDefaultLeaf();
+      h.store.migrateNotepads();
       requestDurableStorage();
       startUploader();
       setHandle(h);

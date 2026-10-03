@@ -2,9 +2,11 @@ import * as Y from 'yjs';
 
 import { createNoteId } from '@/utils/note-id';
 
+import { imageSizeFor, placeBelow } from './canvas-math';
 import { diffEdit } from './text-edit';
 
-import type { CanvasItem, LeafMeta } from './types';
+import type { Rect } from './canvas-math';
+import type { CanvasItem, ImageItem, IngestedImage, LeafMeta } from './types';
 
 /**
  * Transaction origin for user-initiated item edits. UndoManagers track ONLY
@@ -13,6 +15,16 @@ import type { CanvasItem, LeafMeta } from './types';
  */
 export const UI_ORIGIN = Symbol('mitsume-ui');
 
+/**
+ * Transaction origin for typing in the notes and the splits/merges it causes.
+ * Deliberately NOT tracked by the canvas undo: the text field keeps its own
+ * undo, and ctrl+Z on the canvas should never unpick what you typed.
+ */
+export const TYPING_ORIGIN = Symbol('mitsume-typing');
+
+/** A new text card: 8 × 4 grid cells. */
+export const TEXT_CARD_SIZE = { w: 256, h: 128 };
+
 export const DEFAULT_LEAF_ID = 'default';
 export const DEFAULT_LEAF_ICON = 'book';
 
@@ -20,11 +32,14 @@ type YLeaf = Y.Map<unknown>;
 type YItem = Y.Map<unknown>;
 
 /**
- * All access to the notes doc. A leaf is one notepad + one canvas, and the
- * leaves live in a root map keyed by id. Each leaf is a Y.Map { icon,
- * createdAt, order?, items: Y.Map<itemId, Y.Map> }; items are nested maps so
- * a move rewrites only x/y (small updates, precise undo). The canvas half
- * keeps its item APIs keyed by `canvasId`, which is the leaf's id.
+ * All access to the notes doc. A leaf's notes and canvas are two views of
+ * the same chunks: every chunk is a card (an item), and the notes show the
+ * cards in their own order. Leaves live in a root map keyed by id; each is a
+ * Y.Map { icon, createdAt, order?, items: Y.Map<itemId, Y.Map> }. Items are
+ * nested maps so a move rewrites only x/y (small updates, precise undo); a
+ * text item holds its body as a nested Y.Text. The notes order is a separate
+ * root array per leaf (see chunkListFor). The canvas half keeps its item
+ * APIs keyed by `canvasId`, which is the leaf's id.
  *
  * The root key is still 'canvases' — leaves were canvases before they gained
  * a notepad, and renaming the key would orphan every existing image.
@@ -116,61 +131,268 @@ export function createNotesStore(doc: Y.Doc) {
   };
 
   /**
-   * A leaf's notepad body — a Y.Text root of its own rather than a field on
-   * the leaf map. A root type needs no seeding: two devices that both touch
-   * it just merge, where two rival Y.Texts set on the same map key would
-   * have one discarded. (The single pre-leaf notepad at root 'notepad' is
-   * left behind unused.)
+   * The single notepad a leaf had before its notes became chunks — a Y.Text
+   * root, emptied once migrateNotepads has moved it into a chunk. (The one
+   * pre-leaf notepad at root 'notepad' is left behind unused.)
    */
   const notepadFor = (leafId: string): Y.Text =>
     doc.getText(`notepad:${leafId}`);
 
   /**
-   * Deletes a leaf: its canvas items and its notepad. Refuses the last leaf.
-   * Returns the blob hashes its items referenced, for the caller to drop the
-   * ones nothing else uses (see delete-item). Not undoable — the UI confirms.
+   * The notes order of a leaf's chunks: item ids. A root array rather than a
+   * field on the leaf map, for the same reason as the old notepad — a root
+   * type needs no seeding, so two devices touching it merge instead of one
+   * replacing the other's. It can hold duplicates (two devices filling in
+   * unlisted items at once) and ids of deleted items; chunkOrder reads past
+   * both.
+   */
+  const chunkListFor = (leafId: string): Y.Array<string> =>
+    doc.getArray<string>(`chunks:${leafId}`);
+
+  /**
+   * Item ids in notes order: the listed ones first (first occurrence wins),
+   * then any item not listed — images from before the notes and canvas were
+   * one — oldest first (ids are time-prefixed).
+   */
+  const chunkOrder = (leafId: string): string[] => {
+    const items = itemsMapFor(leafId);
+    const seen = new Set<string>();
+    for (const id of chunkListFor(leafId).toArray())
+      if (items.has(id)) seen.add(id);
+    const unlisted = [...items.keys()].filter((id) => !seen.has(id)).sort();
+    return [...seen, ...unlisted];
+  };
+
+  /** Write the unlisted items into the list, so positions can be named. */
+  const materialize = (leafId: string) => {
+    const list = chunkListFor(leafId);
+    const listed = new Set(list.toArray());
+    const unlisted = chunkOrder(leafId).filter((id) => !listed.has(id));
+    if (unlisted.length) list.push(unlisted);
+  };
+
+  /** Put `id` into the notes right after `afterId` (null = at the top). */
+  const listAfter = (leafId: string, afterId: string | null, id: string) => {
+    materialize(leafId);
+    const list = chunkListFor(leafId);
+    const index = afterId === null ? -1 : list.toArray().indexOf(afterId);
+    list.insert(index + 1, [id]);
+  };
+
+  const unlist = (leafId: string, id: string) => {
+    const list = chunkListFor(leafId);
+    const ids = list.toArray();
+    for (let i = ids.length - 1; i >= 0; i -= 1)
+      if (ids[i] === id) list.delete(i, 1);
+  };
+
+  const rectOf = (yItem: YItem): Rect => ({
+    x: yItem.get('x') as number,
+    y: yItem.get('y') as number,
+    w: yItem.get('w') as number,
+    h: yItem.get('h') as number,
+  });
+
+  /** Where a card added from the notes after `afterId` lands on the canvas. */
+  const placeAfter = (
+    leafId: string,
+    afterId: string | null,
+    size: { w: number; h: number }
+  ): Rect => {
+    const items = itemsMapFor(leafId);
+    const anchor = afterId ? items.get(afterId) : undefined;
+    return placeBelow(
+      anchor ? rectOf(anchor) : null,
+      size,
+      [...items.values()].map(rectOf)
+    );
+  };
+
+  const putTextItem = (
+    leafId: string,
+    id: string,
+    rect: Rect,
+    text: string
+  ) => {
+    const yItem = new Y.Map<unknown>();
+    yItem.set('id', id);
+    yItem.set('kind', 'text');
+    for (const key of ['x', 'y', 'w', 'h'] as const) yItem.set(key, rect[key]);
+    yItem.set('z', nextZ(leafId));
+    yItem.set('text', new Y.Text(text));
+    itemsMapFor(leafId).set(id, yItem);
+  };
+
+  const textOf = (leafId: string, id: string): Y.Text | null => {
+    const text = itemsMapFor(leafId).get(id)?.get('text');
+    return text instanceof Y.Text ? text : null;
+  };
+
+  /** Rewrite a Y.Text as the smallest edit against its current body. */
+  const applyText = (text: Y.Text, next: string) => {
+    const { index, removed, inserted } = diffEdit(text.toString(), next);
+    if (removed > 0) text.delete(index, removed);
+    if (inserted) text.insert(index, inserted);
+  };
+
+  /** Adds a text chunk after `afterId` (null = at the top); returns its id. */
+  const insertTextChunk = (
+    leafId: string,
+    afterId: string | null,
+    text = ''
+  ): string => {
+    const id = createNoteId();
+    doc.transact(() => {
+      putTextItem(
+        leafId,
+        id,
+        placeAfter(leafId, afterId, TEXT_CARD_SIZE),
+        text
+      );
+      listAfter(leafId, afterId, id);
+    }, TYPING_ORIGIN);
+    return id;
+  };
+
+  /** Typing in a chunk: written as the smallest edit (see `diffEdit`). */
+  const setChunkText = (leafId: string, id: string, next: string) => {
+    const text = textOf(leafId, id);
+    if (!text || text.toString() === next) return;
+    doc.transact(() => applyText(text, next), TYPING_ORIGIN);
+  };
+
+  /**
+   * Splits a chunk where `---` was typed: it keeps `before`, and a new chunk
+   * right after it gets `after`. Returns the new chunk's id.
+   */
+  const splitChunk = (
+    leafId: string,
+    id: string,
+    before: string,
+    after: string
+  ): string => {
+    const newId = createNoteId();
+    doc.transact(() => {
+      const text = textOf(leafId, id);
+      if (text) applyText(text, before);
+      putTextItem(leafId, newId, placeAfter(leafId, id, TEXT_CARD_SIZE), after);
+      listAfter(leafId, id, newId);
+    }, TYPING_ORIGIN);
+    return newId;
+  };
+
+  /**
+   * Backspace at the start of a text chunk: its text joins the end of the
+   * text chunk above (on a new line) and its card goes. Returns that chunk
+   * and the caret position at the join, or null when the chunk above is an
+   * image or there is none.
+   */
+  const mergeChunkUp = (
+    leafId: string,
+    id: string
+  ): { id: string; caret: number } | null => {
+    const order = chunkOrder(leafId);
+    const prevId = order[order.indexOf(id) - 1];
+    const prev = prevId ? textOf(leafId, prevId) : null;
+    const text = textOf(leafId, id);
+    if (!prevId || !prev || !text) return null;
+    const caret = prev.length;
+    const body = text.toString();
+    doc.transact(() => {
+      if (body) prev.insert(caret, caret > 0 ? `\n${body}` : body);
+      itemsMapFor(leafId).delete(id);
+      unlist(leafId, id);
+    }, TYPING_ORIGIN);
+    return { id: prevId, caret };
+  };
+
+  /**
+   * Moves each leaf's old single notepad into a first text chunk, once. The
+   * chunk's id is derived from the leaf, so two devices migrating at the same
+   * time write the same card instead of two.
+   */
+  const migrateNotepads = () => {
+    for (const leafId of leaves.keys()) {
+      const notepad = notepadFor(leafId);
+      if (notepad.length === 0) continue;
+      const id = `notepad-${leafId}`;
+      doc.transact(() => {
+        if (!itemsMapFor(leafId).has(id))
+          putTextItem(
+            leafId,
+            id,
+            placeAfter(leafId, null, TEXT_CARD_SIZE),
+            notepad.toString()
+          );
+        listAfter(leafId, null, id);
+        notepad.delete(0, notepad.length);
+      });
+    }
+  };
+
+  /**
+   * Deletes a leaf: its cards, its notes order and any old notepad. Refuses
+   * the last leaf. Returns the blob hashes its images referenced, for the
+   * caller to drop the ones nothing else uses (see delete-item). Not
+   * undoable — the UI confirms.
    */
   const deleteLeaf = (leafId: string): string[] => {
     if (leaves.size <= 1 || !leaves.has(leafId)) return [];
     const hashes = new Set<string>();
-    for (const yItem of itemsMapFor(leafId).values()) {
-      hashes.add(yItem.get('displayHash') as string);
-      hashes.add(yItem.get('originalHash') as string);
-    }
+    for (const yItem of itemsMapFor(leafId).values())
+      for (const key of ['displayHash', 'originalHash']) {
+        const hash = yItem.get(key);
+        if (typeof hash === 'string') hashes.add(hash);
+      }
     doc.transact(() => {
       leaves.delete(leafId);
-      // A root Y.Text can't be removed, only emptied.
+      // Root types can't be removed, only emptied.
       const notepad = notepadFor(leafId);
       notepad.delete(0, notepad.length);
+      const list = chunkListFor(leafId);
+      list.delete(0, list.length);
     });
     return [...hashes];
-  };
-
-  /**
-   * Write a new notepad body as the smallest edit against the current one
-   * (see `diffEdit`). Tagged UI_ORIGIN so provider-applied remote updates
-   * never look like local ones.
-   */
-  const setNotepadText = (leafId: string, next: string) => {
-    const text = notepadFor(leafId);
-    const prev = text.toString();
-    if (prev === next) return;
-    const { index, removed, inserted } = diffEdit(prev, next);
-    transactUI(() => {
-      if (removed > 0) text.delete(index, removed);
-      if (inserted) text.insert(index, inserted);
-    });
   };
 
   const getItem = (canvasId: string, itemId: string): CanvasItem | undefined =>
     (itemsMapFor(canvasId).get(itemId)?.toJSON() as CanvasItem) ?? undefined;
 
-  const addItem = (canvasId: string, item: CanvasItem) =>
+  /**
+   * Adds an image card. `afterId` places its chunk in the notes: after that
+   * chunk (null = at the top); omitted = at the end, as for a canvas paste.
+   */
+  const addItem = (
+    canvasId: string,
+    item: ImageItem,
+    afterId?: string | null
+  ) =>
     transactUI(() => {
       const yItem = new Y.Map<unknown>();
       for (const [key, value] of Object.entries(item)) yItem.set(key, value);
       itemsMapFor(canvasId).set(item.id, yItem);
+      if (afterId !== undefined) listAfter(canvasId, afterId, item.id);
+      else {
+        materialize(canvasId);
+        chunkListFor(canvasId).push([item.id]);
+      }
     });
+
+  /** An image pasted into the notes: its card lands below the chunk above. */
+  const addImageChunk = (
+    leafId: string,
+    afterId: string | null,
+    image: IngestedImage
+  ): string => {
+    const id = createNoteId();
+    const rect = placeAfter(
+      leafId,
+      afterId,
+      imageSizeFor({ w: image.displayW, h: image.displayH })
+    );
+    addItem(leafId, { ...image, id, ...rect, z: nextZ(leafId) }, afterId);
+    return id;
+  };
 
   const updateItem = (
     canvasId: string,
@@ -184,8 +406,12 @@ export function createNotesStore(doc: Y.Doc) {
         if (value !== undefined) yItem.set(key, value);
     });
 
+  /** Deletes a card, and so its chunk in the notes. */
   const deleteItem = (canvasId: string, itemId: string) =>
-    transactUI(() => itemsMapFor(canvasId).delete(itemId));
+    transactUI(() => {
+      itemsMapFor(canvasId).delete(itemId);
+      unlist(canvasId, itemId);
+    });
 
   /** Stacking value for a newly added item: above everything present. */
   const nextZ = (canvasId: string): number => {
@@ -214,12 +440,13 @@ export function createNotesStore(doc: Y.Doc) {
   };
 
   /**
-   * Undo/redo scoped to one canvas's items; recreate on leaf switch. Call
+   * Undo/redo scoped to one leaf's cards and their notes order (so undoing a
+   * delete puts the chunk back where it was); recreate on leaf switch. Call
    * stopCapturing() at each gesture start so quick successive ops stay
    * separate undo steps (default captureTimeout merges within 500ms).
    */
   const createUndoManager = (canvasId: string): Y.UndoManager =>
-    new Y.UndoManager(itemsMapFor(canvasId), {
+    new Y.UndoManager([itemsMapFor(canvasId), chunkListFor(canvasId)], {
       trackedOrigins: new Set([UI_ORIGIN]),
     });
 
@@ -233,10 +460,17 @@ export function createNotesStore(doc: Y.Doc) {
     moveLeaf,
     deleteLeaf,
     notepadFor,
-    setNotepadText,
+    chunkListFor,
+    chunkOrder,
+    insertTextChunk,
+    setChunkText,
+    splitChunk,
+    mergeChunkUp,
+    migrateNotepads,
     itemsMapFor,
     getItem,
     addItem,
+    addImageChunk,
     updateItem,
     deleteItem,
     nextZ,

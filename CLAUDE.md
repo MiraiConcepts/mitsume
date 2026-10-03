@@ -4,12 +4,16 @@ Personal, single-user, local-first notes app. Expo SDK 56 / RN 0.85 (+ RN Web)
 client; self-hosted backend (Hocuspocus for doc sync + a content-addressed blob
 store for pasted images). Targets web + Android (Obtainium) — no iOS.
 
-The unit of content is a **leaf**: one free-form notepad (left) beside one
-image canvas (right). The rail on the far left switches, adds (+, icon
-picker), reorders (mouse drag, web only) and deletes (right-click / Android
-long-press, confirmed, never the last one) leaves. In code the canvas half
-keeps `canvas` names; the doc's root map is still `'canvases'` for data
-compatibility.
+The unit of content is a **leaf**: notes (left) and an image canvas (right)
+that are two views of the same **chunks**. Every chunk is a card: a text
+chunk is a text card, an image chunk an image card. Typing `---` on its own
+line splits a chunk; Backspace at a chunk's start merges it up; deleting a
+card deletes its chunk. Moving a card never changes the notes order (a
+separate per-leaf root array, `chunks:<leafId>`). The rail on the far left
+switches, adds (+, icon picker), reorders (mouse drag, web only) and deletes
+(right-click / Android long-press, confirmed, never the last one) leaves. In
+code the canvas half keeps `canvas`/`item` names; the doc's root map is still
+`'canvases'` for data compatibility.
 
 The calendar that used to live here is now
 [hitome](https://github.com/MiraiConcepts/hitome), with its own package id,

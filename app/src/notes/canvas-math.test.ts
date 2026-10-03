@@ -7,7 +7,9 @@ import {
   ZOOM_MIN,
   chooseFocusTarget,
   clampZoom,
+  imageSizeFor,
   pasteRectFor,
+  placeBelow,
   projectDecay,
   resizeRect,
   resizeRectFree,
@@ -277,5 +279,36 @@ describe('chooseFocusTarget', () => {
     const target = chooseFocusTarget(natural, viewport, items);
     // left edge lands exactly on the margin: −60 + dx = FOCUS_MARGIN
     expect(target).toEqual({ x: FOCUS_MARGIN + 60, y: 0, zoom: 1 });
+  });
+});
+
+describe('imageSizeFor', () => {
+  it('caps the long edge and keeps the aspect ratio', () => {
+    const size = imageSizeFor({ w: 2000, h: 1000 });
+    expect(size.w).toBe(PASTE_MAX_EDGE);
+    expect(size.h).toBe(PASTE_MAX_EDGE / 2);
+  });
+});
+
+describe('placeBelow', () => {
+  const size = { w: 256, h: 128 };
+
+  it('starts one cell in from the origin with nothing above', () => {
+    expect(placeBelow(null, size, [])).toEqual({ x: GRID, y: GRID, ...size });
+  });
+
+  it('lands one cell below its anchor, on the grid', () => {
+    const anchor = { x: 64, y: 0, w: 300, h: 100 };
+    const rect = placeBelow(anchor, size, [anchor]);
+    expect(rect.x).toBe(64);
+    expect(rect.y).toBe(Math.ceil((100 + GRID) / GRID) * GRID);
+  });
+
+  it('is pushed down past cards in the way', () => {
+    const anchor = { x: 0, y: 0, w: 256, h: 128 };
+    const blocker = { x: 100, y: 160, w: 200, h: 200 };
+    const rect = placeBelow(anchor, size, [anchor, blocker]);
+    expect(rect.y).toBeGreaterThanOrEqual(blocker.y + blocker.h);
+    expect(rect.y % GRID).toBe(0);
   });
 });

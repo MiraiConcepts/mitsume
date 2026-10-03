@@ -176,22 +176,62 @@ export const chooseFocusTarget = (
 };
 
 /**
- * World rect for a pasted image: long edge capped at PASTE_MAX_EDGE, width
+ * World size for a pasted image: long edge capped at PASTE_MAX_EDGE, width
  * snapped to the grid with height following the exact aspect ratio (strict
- * aspect lock beats double-snapped drift), centered in the viewport with the
- * top-left corner snapped.
+ * aspect lock beats double-snapped drift).
+ */
+export const imageSizeFor = (natural: Size): Size => {
+  const cap = Math.min(1, PASTE_MAX_EDGE / Math.max(natural.w, natural.h));
+  const w = snapSize(natural.w * cap);
+  return { w, h: Math.max(1, Math.round(w * (natural.h / natural.w))) };
+};
+
+/**
+ * World rect for an image pasted onto the canvas: imageSizeFor, centered in
+ * the viewport with the top-left corner snapped.
  */
 export const pasteRectFor = (
   natural: Size,
   viewport: Size,
   camera: Camera
 ): Rect => {
-  const cap = Math.min(1, PASTE_MAX_EDGE / Math.max(natural.w, natural.h));
-  const w = snapSize(natural.w * cap);
-  const h = Math.max(1, Math.round(w * (natural.h / natural.w)));
+  const { w, h } = imageSizeFor(natural);
   const center = screenToWorld(camera, {
     x: viewport.w / 2,
     y: viewport.h / 2,
   });
   return { x: snap(center.x - w / 2), y: snap(center.y - h / 2), w, h };
+};
+
+/** Next grid line at or below v (bottoms of aspect-locked images are off-grid). */
+const snapUp = (v: number): number => Math.ceil(v / GRID) * GRID;
+
+const overlaps = (a: Rect, b: Rect): boolean =>
+  a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+
+/**
+ * Where a card added from the notes lands: one grid cell below `anchor` (the
+ * card of the chunk above it), or at the origin when there is none, then
+ * pushed down past any card it would cover. "The origin" is one cell in from
+ * the world origin, so a first card isn't flush against the canvas edge.
+ * Snapped, so it sits on the grid like everything else.
+ */
+export const placeBelow = (
+  anchor: Rect | null,
+  size: Size,
+  others: readonly Rect[]
+): Rect => {
+  const rect = {
+    x: anchor ? snap(anchor.x) : GRID,
+    y: anchor ? snapUp(anchor.y + anchor.h + GRID) : GRID,
+    w: size.w,
+    h: size.h,
+  };
+  // Each pass clears one blocker; bounded so a pathological layout can't spin.
+  for (let pass = 0; pass <= others.length; pass += 1) {
+    const blocker = others.find((other) => overlaps(rect, other));
+    if (!blocker) break;
+    rect.y = snapUp(blocker.y + blocker.h + GRID);
+  }
+  return rect;
 };

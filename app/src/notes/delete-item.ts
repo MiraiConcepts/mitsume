@@ -1,12 +1,14 @@
 import { blobsBaseUrl } from '@/config';
 
 import { removeBlob } from './blob-cache';
+import { isTextItem } from './types';
 
 import type { NotesStore } from './store';
 
 /**
- * Delete a canvas item AND its bytes (user decision: deletion removes the
- * image from browser cache and server). Bytes only go when no other item
+ * Delete a card — and so its chunk in the notes — AND, for an image, its
+ * bytes (user decision: deletion removes the image from browser cache and
+ * server). Bytes only go when no other item
  * references the hash. Locally the blob moves to the session trash so ctrl+Z
  * can restore and re-upload it; the server DELETE is best-effort (offline
  * deletes may orphan server bytes — accepted for V1).
@@ -19,7 +21,8 @@ export async function deleteItemWithBlobs(
   const item = store.getItem(canvasId, itemId);
   if (!item) return;
   store.deleteItem(canvasId, itemId);
-  await dropUnreferencedBlobs(store, [item.displayHash, item.originalHash]);
+  if (!isTextItem(item))
+    await dropUnreferencedBlobs(store, [item.displayHash, item.originalHash]);
 }
 
 /**

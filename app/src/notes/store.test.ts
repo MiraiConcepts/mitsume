@@ -2,9 +2,9 @@ import * as Y from 'yjs';
 
 import { DEFAULT_LEAF_ID, createNotesStore } from './store';
 
-import type { CanvasItem } from './types';
+import type { ImageItem, IngestedImage, TextItem } from './types';
 
-const makeItem = (overrides: Partial<CanvasItem> = {}): CanvasItem => ({
+const makeItem = (overrides: Partial<ImageItem> = {}): ImageItem => ({
   id: 'item-1',
   x: 0,
   y: 0,
@@ -20,6 +20,21 @@ const makeItem = (overrides: Partial<CanvasItem> = {}): CanvasItem => ({
   originalSize: 1234,
   ...overrides,
 });
+
+/** Just the blob-derived fields, as the ingest pipeline hands them over. */
+const ingested = (): IngestedImage => {
+  const { displayHash, displayMime, displayW, displayH } = makeItem();
+  const { originalHash, originalMime, originalSize } = makeItem();
+  return {
+    displayHash,
+    displayMime,
+    displayW,
+    displayH,
+    originalHash,
+    originalMime,
+    originalSize,
+  };
+};
 
 describe('createNotesStore', () => {
   it('seeds the first leaf idempotently', () => {
@@ -80,13 +95,13 @@ describe('createNotesStore', () => {
     store.ensureDefaultLeaf();
     const other = store.createLeaf('heart');
     store.addItem(other, makeItem());
-    store.setNotepadText(other, 'gone soon');
+    store.insertTextChunk(other, null, 'gone soon');
     const hashes = store.deleteLeaf(other);
     expect(hashes.sort()).toEqual(['display-hash', 'original-hash']);
     expect(store.listLeaves().map((leaf) => leaf.id)).toEqual([
       DEFAULT_LEAF_ID,
     ]);
-    expect(store.notepadFor(other).toString()).toBe('');
+    expect(store.chunkListFor(other).length).toBe(0);
     expect(store.referencesToHash('display-hash')).toBe(0);
   });
 
@@ -106,15 +121,122 @@ describe('createNotesStore', () => {
     expect(store.listLeaves().map((leaf) => leaf.id)).toEqual([other]);
   });
 
-  it('keeps a separate notepad per leaf', () => {
-    const store = createNotesStore(new Y.Doc());
-    store.ensureDefaultLeaf();
-    const other = store.createLeaf('heart');
-    store.setNotepadText(DEFAULT_LEAF_ID, 'first');
-    store.setNotepadText(other, 'second');
-    store.setNotepadText(other, 'second, edited');
-    expect(store.notepadFor(DEFAULT_LEAF_ID).toString()).toBe('first');
-    expect(store.notepadFor(other).toString()).toBe('second, edited');
+  describe('chunks', () => {
+    const setup = () => {
+      const store = createNotesStore(new Y.Doc());
+      store.ensureDefaultLeaf();
+      return store;
+    };
+    const L = DEFAULT_LEAF_ID;
+    const textOf = (store: ReturnType<typeof setup>, id: string) =>
+      (store.getItem(L, id) as TextItem).text;
+
+    it('lists images from before chunks at the end, oldest first', () => {
+      const store = setup();
+      // Written straight to the map: no notes order, like pre-chunk images.
+      for (const id of ['b-2', 'a-1']) {
+        const yItem = new Y.Map<unknown>();
+        for (const [key, value] of Object.entries(makeItem({ id })))
+          yItem.set(key, value);
+        store.itemsMapFor(L).set(id, yItem);
+      }
+      const first = store.insertTextChunk(L, null, 'top');
+      expect(store.chunkOrder(L)).toEqual([first, 'a-1', 'b-2']);
+    });
+
+    it('adds text chunks in order, each card below the one above', () => {
+      const store = setup();
+      const a = store.insertTextChunk(L, null, 'a');
+      const b = store.insertTextChunk(L, a, 'b');
+      const c = store.insertTextChunk(L, a, 'c');
+      expect(store.chunkOrder(L)).toEqual([a, c, b]);
+      const cardA = store.getItem(L, a)!;
+      const cardC = store.getItem(L, c)!;
+      expect(cardA).toMatchObject({ kind: 'text', text: 'a', x: 32, y: 32 });
+      expect(cardC.x).toBe(cardA.x);
+      expect(cardC.y).toBeGreaterThanOrEqual(cardA.y + cardA.h);
+    });
+
+    it('splits a chunk where --- was typed', () => {
+      const store = setup();
+      const a = store.insertTextChunk(L, null, 'one\n---\ntwo');
+      const b = store.splitChunk(L, a, 'one', 'two');
+      expect(store.chunkOrder(L)).toEqual([a, b]);
+      expect(textOf(store, a)).toBe('one');
+      expect(textOf(store, b)).toBe('two');
+    });
+
+    it('merges a chunk into the text chunk above', () => {
+      const store = setup();
+      const a = store.insertTextChunk(L, null, 'one');
+      const b = store.insertTextChunk(L, a, 'two');
+      expect(store.mergeChunkUp(L, b)).toEqual({ id: a, caret: 3 });
+      expect(store.chunkOrder(L)).toEqual([a]);
+      expect(textOf(store, a)).toBe('one\ntwo');
+      expect(store.getItem(L, b)).toBeUndefined();
+    });
+
+    it('does not merge into an image or past the top', () => {
+      const store = setup();
+      const image = store.addImageChunk(L, null, ingested());
+      const text = store.insertTextChunk(L, image, 'under the image');
+      expect(store.mergeChunkUp(L, text)).toBeNull();
+      expect(store.mergeChunkUp(L, image)).toBeNull();
+      expect(store.chunkOrder(L)).toEqual([image, text]);
+    });
+
+    it('places an image pasted in the notes after its chunk', () => {
+      const store = setup();
+      const a = store.insertTextChunk(L, null, 'a');
+      const b = store.insertTextChunk(L, a, 'b');
+      const image = store.addImageChunk(L, a, ingested());
+      expect(store.chunkOrder(L)).toEqual([a, image, b]);
+      const cardA = store.getItem(L, a)!;
+      expect(store.getItem(L, image)!.y).toBeGreaterThanOrEqual(
+        cardA.y + cardA.h
+      );
+    });
+
+    it('adds a canvas paste at the end of the notes', () => {
+      const store = setup();
+      const a = store.insertTextChunk(L, null, 'a');
+      store.addItem(L, makeItem({ id: 'pasted' }));
+      expect(store.chunkOrder(L)).toEqual([a, 'pasted']);
+    });
+
+    it('deletes a card from the notes too, and undo restores both', () => {
+      const store = setup();
+      const undo = store.createUndoManager(L);
+      const a = store.insertTextChunk(L, null, 'a');
+      const b = store.insertTextChunk(L, a, 'b');
+      const c = store.insertTextChunk(L, b, 'c');
+      store.deleteItem(L, b);
+      expect(store.chunkOrder(L)).toEqual([a, c]);
+      undo.undo();
+      expect(store.chunkOrder(L)).toEqual([a, b, c]);
+      expect(textOf(store, b)).toBe('b');
+    });
+
+    it('keeps typing out of the canvas undo', () => {
+      const store = setup();
+      const a = store.insertTextChunk(L, null, 'a');
+      const undo = store.createUndoManager(L);
+      store.setChunkText(L, a, 'a, edited');
+      expect(undo.canUndo()).toBe(false);
+      expect(textOf(store, a)).toBe('a, edited');
+    });
+
+    it('moves an old notepad into a first chunk, once', () => {
+      const store = setup();
+      const later = store.insertTextChunk(L, null, 'later');
+      store.notepadFor(L).insert(0, 'old notes');
+      store.migrateNotepads();
+      store.migrateNotepads();
+      const order = store.chunkOrder(L);
+      expect(order).toEqual([`notepad-${L}`, later]);
+      expect(textOf(store, order[0])).toBe('old notes');
+      expect(store.notepadFor(L).length).toBe(0);
+    });
   });
 
   it('round-trips item add / get / update / delete', () => {

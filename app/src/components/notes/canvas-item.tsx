@@ -4,6 +4,11 @@ import { Platform, StyleSheet } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
+import { isTextItem } from '@/notes/types';
 import { useBlobUrl } from '@/notes/use-blob-url';
 
 import type { Rect } from '@/notes/canvas-math';
@@ -18,7 +23,8 @@ const webCursor = (cursor: string): ViewStyle | undefined =>
   Platform.OS === 'web' ? ({ cursor } as unknown as ViewStyle) : undefined;
 
 /**
- * One image on the canvas, positioned in SCREEN space by its own animated
+ * One card on the canvas — an image, or a text chunk of the notes —
+ * positioned in SCREEN space by its own animated
  * style (translate = world·zoom + t, scaled about the top-left corner).
  * Screen-space positioning — not a transformed container — is what makes
  * hit-testing work on Android too (children outside a parent's bounds never
@@ -52,8 +58,6 @@ export function CanvasItem({
   onEnd: () => void;
   onCancel: () => void;
 }) {
-  const url = useBlobUrl(item.displayHash);
-
   const move = useMemo(
     () =>
       Gesture.Pan()
@@ -94,13 +98,35 @@ export function CanvasItem({
         ]}
         collapsable={false}
       >
-        {url ? (
-          <Image source={{ uri: url }} style={styles.image} contentFit="fill" />
+        {isTextItem(item) ? (
+          <TextCard text={item.text} />
         ) : (
-          <Animated.View style={styles.placeholder} />
+          <ImageCard hash={item.displayHash} />
         )}
       </Animated.View>
     </GestureDetector>
+  );
+}
+
+function ImageCard({ hash }: { hash: string }) {
+  const url = useBlobUrl(hash);
+  return url ? (
+    <Image source={{ uri: url }} style={styles.image} contentFit="fill" />
+  ) : (
+    <Animated.View style={styles.placeholder} />
+  );
+}
+
+/** A text chunk's card: its text, cut off where the card ends. */
+function TextCard({ text }: { text: string }) {
+  const theme = useTheme();
+  return (
+    <ThemedView
+      type="backgroundElement"
+      style={[styles.textCard, { borderColor: theme.backgroundSelected }]}
+    >
+      <ThemedText style={styles.text}>{text}</ThemedText>
+    </ThemedView>
   );
 }
 
@@ -117,6 +143,21 @@ const styles = StyleSheet.create({
     // The container owns pointer events — keeps the web <img> from starting
     // a native HTML5 drag mid-gesture.
     pointerEvents: 'none',
+  },
+  textCard: {
+    width: '100%',
+    height: '100%',
+    overflow: 'hidden',
+    borderRadius: Spacing.one,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: Spacing.two + Spacing.one,
+    // Same as the image: the container owns pointer events, so dragging a
+    // card never starts a text selection.
+    pointerEvents: 'none',
+  },
+  text: {
+    fontSize: 14,
+    lineHeight: 20,
   },
   placeholder: {
     width: '100%',

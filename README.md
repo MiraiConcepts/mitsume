@@ -3,9 +3,11 @@
 Personal, single-user, local-first note-taking app for Android and web, syncing
 to a self-hosted backend.
 
-Notes live on **leaves**. A leaf is a free-form notepad on the left beside an
-infinite canvas on the right: drag, pinch, and paste images onto a dot grid.
-A rail of icons switches, adds, reorders, and deletes leaves. Edits merge
+Notes live on **leaves**. A leaf's notes (left) and infinite canvas (right)
+are two views of the same chunks: every paragraph chunk and every image is
+also a card you can drag, pinch, and arrange on a dot grid. Type `---` to
+start a new chunk. A rail of icons switches, adds, reorders, and deletes
+leaves. Edits merge
 without conflicts (Yjs CRDT) and survive offline; images are stored once by
 content hash.
 
