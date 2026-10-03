@@ -54,6 +54,11 @@ import type * as Y from 'yjs';
 const WHEEL_ZOOM_SENSITIVITY = 0.002;
 /** ctrl+wheel = trackpad pinch (small continuous deltas) — needs more gain. */
 const PINCH_WHEEL_SENSITIVITY = 0.01;
+/**
+ * Pixels per wheel delta by WheelEvent.deltaMode: pixel, line (Firefox mice).
+ * Page mode falls back to the viewport height.
+ */
+const WHEEL_UNIT: Record<number, number> = { 0: 1, 1: 16 };
 const ZOOM_STEP = 1.25;
 /** Distinguishes a drag from a click so taps can reach items/deselection. */
 const PAN_MIN_DISTANCE = 4;
@@ -234,6 +239,8 @@ export function CanvasView({
     };
   }, [undoManager, store, canvasId, zoom]);
 
+  // Scrolling pans and modifiers zoom — the Figma/Miro convention, so a
+  // trackpad's two-finger scroll moves the board (macOS adds the momentum).
   const onWheel = useCallback(
     (e: WheelEvent) => {
       e.preventDefault();
@@ -244,9 +251,17 @@ export function CanvasView({
       if (e.ctrlKey) {
         // Trackpad pinch: continuous input, apply directly.
         api.pinchAt(point, Math.exp(-e.deltaY * PINCH_WHEEL_SENSITIVITY));
-      } else {
-        // Mouse-wheel ticks: glide toward the compounded target.
+      } else if (e.metaKey) {
+        // Cmd + mouse wheel: glide toward the compounded target.
         api.glideZoomBy(point, Math.exp(-e.deltaY * WHEEL_ZOOM_SENSITIVITY));
+      } else {
+        api.stopAll();
+        const unit = WHEEL_UNIT[e.deltaMode] ?? rect.height;
+        let dx = e.deltaX * unit;
+        let dy = e.deltaY * unit;
+        // Shift + mouse wheel scrolls sideways (most browsers already swap).
+        if (e.shiftKey && dx === 0) [dx, dy] = [dy, 0];
+        api.panBy(-dx, -dy);
       }
     },
     [api]
